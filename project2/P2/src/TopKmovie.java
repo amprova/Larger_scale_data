@@ -13,6 +13,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.io.Text;
+import static java.util.stream.Collectors.*;
+
 
 import java.util.*; 
 import org.apache.hadoop.io.LongWritable; 
@@ -41,7 +43,6 @@ public class TopKmovie {
 				MID.set(itr.nextToken());
 				context.write(MID, one);
 			}
-			//MID.set(movie);
 
 		}
 	}
@@ -62,55 +63,50 @@ public class TopKmovie {
 		}
 	}
 
-	public static class MovieSort extends Mapper<Object, LongWritable, LongWritable, List<String>> { 
+	public static class MovieSort extends Mapper<LongWritable, Text, LongWritable, Text> { 
 		
-		private final static Text Mcount = new Text();
-		private List<String> MID_frq = new ArrayList<String>();
-		private final static LongWritable one = new LongWritable(1);
-		
-		public void map(Object key, Iterable<LongWritable>value, Context context) throws IOException,  InterruptedException 
+		public void map(LongWritable key, Text value, Context context) throws IOException,  InterruptedException 
 		{
-			/*String[] tokens = value.toString().split("::"); 
-			String count = tokens[1];
-			StringTokenizer itr = new StringTokenizer(count);
-			while (itr.hasMoreTokens()) {
-				Mcount.set(itr.nextToken());
-				context.write(one, Mcount);*/
-			Iterator<LongWritable> itr = value.iterator();
-			String val = itr.next().toString();
-			//String MID = key.toString();
-			MID_frq.add(val);
-			
-			context.write(one, MID_frq);
-			
-		} 
-	}
+				LongWritable one = new LongWritable(1);
+				String[] tokens = value.toString().split("\t"); 
 
-	public static class SortReducer extends Reducer<LongWritable, List<String>, LongWritable, String>
+				String movie = tokens[0];
+				String count = tokens[1];
+				String s = count+","+movie;
+				context.write(one, new Text(s));
+		}
+			 	
+	} 
+
+
+	public static class SortReducer extends Reducer<LongWritable, Text, LongWritable, Text>
 	{
 		
 
-		public void reduce(LongWritable key, List<String> values, Context context)
+		public void reduce(LongWritable key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException
 		{
-			//List<String> value = values;
-		    //Collections.sort(value);
-		    //context.write(key, value); 
+			Iterator<Text> itr = values.iterator();
+			TreeMap<LongWritable,String> tmap = new TreeMap< LongWritable, String>(Collections.reverseOrder());
 			
-			TreeMap<String,LongWritable> tmap = new TreeMap<String, LongWritable>();
-			
-			for(String s: values)
+			while(itr.hasNext())
 			{
-				tmap.put(s, key);
+				String document = itr.next().toString();
+				StringTokenizer itr1 = new StringTokenizer(document);
+				while(itr1.hasMoreTokens())
+				{
+					String[] val_MID = itr1.nextToken().toString().split(",");
+					tmap.put(new LongWritable(Integer.parseInt(val_MID[0])), val_MID[1]);
+					
+				}
+				
 			}
 				
-			
-			for (Map.Entry<String, LongWritable> entry : tmap.entrySet())  
-	        { 
-	  
-	            String s = entry.getKey(); 
-	            LongWritable fakekey = entry.getValue(); 
-	            context.write(fakekey,s); 
+			for (Map.Entry<LongWritable, String> entry : tmap.entrySet())
+	        { 	
+	            String s = entry.getValue();
+	            LongWritable freq = entry.getKey(); 
+	            context.write(freq,new Text(s));
 	        } 
 		}
 	}

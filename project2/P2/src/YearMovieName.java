@@ -7,6 +7,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.lib.MultipleInputs;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -147,9 +148,14 @@ public class YearMovieName
 		job.setReducerClass(MovieReducer.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
+		MultipleInputs.addInputPath(job, new Path(args[0]),
+	            TextInputFormat.class, JoinMapper.class);
 
-		FileInputFormat.addInputPath(job, new Path(args[0]));
-		FileInputFormat.addInputPath(job, new Path(args[1]));
+	    MultipleInputs.addInputPath(job, new Path(args[1]),
+	            TextInputFormat.class, JoinMapper.class);
+
+		//FileInputFormat.addInputPath(job, new Path(args[0]));
+		//FileInputFormat.addInputPath(job, new Path(args[1]));
 		FileOutputFormat.setOutputPath(job, new Path(args[2]));
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
