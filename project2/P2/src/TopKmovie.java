@@ -28,8 +28,6 @@ public class TopKmovie {
 		private final static Text MID = new Text();
 		private final static LongWritable one = new LongWritable(1);
 
-		//private final static int count = new Integer();
-
 
 		public void map(Object key, Text val, Context context)
 				throws IOException, InterruptedException
@@ -101,12 +99,18 @@ public class TopKmovie {
 				}
 				
 			}
-				
+			String topn = context.getConfiguration().get("topn");
+			int max = Integer.parseInt(topn, 10);
+			int count = 0;
 			for (Map.Entry<LongWritable, String> entry : tmap.entrySet())
 	        { 	
+				if(count<max)
+				{
 	            String s = entry.getValue();
 	            LongWritable freq = entry.getKey(); 
 	            context.write(freq,new Text(s));
+				}
+				count++;
 	        } 
 		}
 	}
@@ -115,11 +119,11 @@ public class TopKmovie {
 	ClassNotFoundException, InterruptedException
 	{
 		Configuration conf1 = new Configuration();
-		if (args.length < 2) {
-			System.out
-			.println("Usage: TopKmovies <input path> <output path>");
+		if (args.length < 3) {
+			System.out.println("Usage: TopKmovies <input path> <topn> <output path>");
 			System.exit(1);
 		}
+		conf1.set("topn", args[1]);
 		Job job1 = new Job(conf1, "Top k Movies");
 		job1.setJarByClass(TopKmovie.class);
 		job1.setMapperClass(MovieMapper.class);
@@ -134,6 +138,7 @@ public class TopKmovie {
 		
 
 		Configuration conf2 = new Configuration();
+		conf2.set("topn", args[1]);
 		Job job2 = new Job(conf2, "Sorted Top k Movies");
 		job2.setJarByClass(TopKmovie.class);
 		job2.setMapperClass(MovieSort.class);
@@ -142,7 +147,7 @@ public class TopKmovie {
 		job2.setOutputKeyClass(LongWritable.class);
 		job2.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job2, outputPath);
-		FileOutputFormat.setOutputPath(job2, new Path(args[1]));
+		FileOutputFormat.setOutputPath(job2, new Path(args[2]));
 		System.exit(job2.waitForCompletion(true) ? 0 : 1);
 
 	}
