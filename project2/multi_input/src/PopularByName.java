@@ -1,37 +1,37 @@
-
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Collections;
-import java.util.HashMap; 
-import java.util.Map; 
-import java.util.TreeMap;
-import java.util.StringTokenizer;
-import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.TreeMap;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.GenericOptionsParser;
-/**
- * Builds an Better inverted index: each word followed by files it was found in with frequency.
+
+
+
+ /* 
  * 
  * 
- * @author amifaraj
+ * 
  */
+
 public class YearMovieName
 {
 
@@ -40,35 +40,7 @@ public class YearMovieName
 
 	{
 		private final static Text Year = new Text();
-		private final static Text MovieID = new Text();
-		
-		public void map(Object key, Text val, Context context) throws IOException, InterruptedException
-		{
-			
-			String rows = val.toString(); 
-
-			//StringTokenizer itr = new StringTokenizer(rows);
-			//while (itr.hasMoreTokens()) {
-			String[] tokens = rows.split("::");
-			int time = Integer.parseInt(tokens[3]);
-			String movie = tokens[1];
-			MovieID.set(movie);
-			int year = (time/(365*24*60*60))+1970;
-			String y = Integer.toString(year);
-			Year.set(y);
-			context.write(Year, MovieID);
-			
-			//MID.set(movie);
-
-		}
-	}
-	
-	public static class MovieNameMapper extends Mapper<Object, Text, Text, Text>
-
-
-	{
-		private final static Text MovieID = new Text();
-		private final static Text MovieName = new Text();
+		private final static Text Movie = new Text();
 		
 		public void map(Object key, Text val, Context context) throws IOException, InterruptedException
 		{
@@ -76,15 +48,16 @@ public class YearMovieName
 			String rows = val.toString(); 
 
 			StringTokenizer itr = new StringTokenizer(rows);
-			
-			String[] tokens = rows.split("::");
-			//int time = Integer.parseInt(tokens[0]);
-			String movie = tokens[0];
-			MovieID.set(movie);
-			String title = "Title" + tokens[1];
-			MovieName.set(title);
-			context.write(MovieID, MovieName);
-			
+			while (itr.hasMoreTokens()) {
+				String[] tokens = itr.nextToken().split("::");
+				int time = Integer.parseInt(tokens[3]);
+				String movie = tokens[1];
+				Movie.set(movie);
+				int year = (time/(365*24*60*60))+1970;
+				String y = Integer.toString(year);
+				Year.set(y);
+				context.write(Year, Movie);
+			}
 			//MID.set(movie);
 
 		}
@@ -98,12 +71,16 @@ public class YearMovieName
 				throws IOException, InterruptedException
 		{
 			Iterator<Text> itr = values.iterator();
+
+			/**Better Inverted Index using hashmap
+			counting the term frequency per document
+			***/
+			
 			HashMap<String, Integer> frequency = new HashMap<>();
 			//calculating number of appearance of a document. <doc, count> HashMap
 			while(itr.hasNext())
 			{
-				String document = itr.next().toString();
-				//frequency = 
+				String document = itr.next().toString(); 
 				if(frequency.containsKey(document))
 				{
 					int count = frequency.get(document);
@@ -115,7 +92,7 @@ public class YearMovieName
 				}
 			}
 			
-			
+			boolean first = true;
 			StringBuilder toReturn = new StringBuilder();
 			
 			// TreeMap stores sorted by key 
@@ -141,22 +118,17 @@ public class YearMovieName
 	        }
 			
 			
-			int count = 0;
-			int max = 10;
-			boolean first = true;
 			for(Map.Entry<Integer, List<String>> doc : Tree.entrySet()) {
-				if (count > max) break;
 			    int key1 = doc.getKey();
 			    List<String> value = doc.getValue();
-			    for (String s: value)
-			    {
-			    	if (!first)
-				    	toReturn.append(", ");
-				    first = false;
-				    toReturn.append(s);   
-				    count++;
-			    }   
-			   
+			    Collections.sort(value);
+			    String documents = Arrays.toString(value.toArray()).replace("[", "").replace("]", "");
+			    
+			    if (!first)
+			    	toReturn.append(", ");
+			    first = false;
+			    //toReturn.append(value +" "+key1);
+			    toReturn.append(documents);
 			}
 			
 			context.write(key, new Text(toReturn.toString()));
@@ -172,24 +144,66 @@ public class YearMovieName
 					.println("Usage: Topk <input path> <input path> <output path>");
 			System.exit(1);
 		}
-		String[] files=new GenericOptionsParser(conf,args).getRemainingArgs();
-		Path p1=new Path(files[0]);
-		Path p2=new Path(files[1]);
-		Path p3=new Path(files[2]);
-		Job job = new Job(conf, "YearName");
+		//Job job = new Job(conf, "YearName");
+		Job job = Job.getInstance(conf);
 		job.setJarByClass(YearMovieName.class);
-		MultipleInputs.addInputPath(job, p1,TextInputFormat.class, MovieMapper.class);
-		MultipleInputs.addInputPath(job, p2,TextInputFormat.class, MovieNameMapper.class);
+		MultipleInputs.addInputPath(job, new Path(args[0]),TextInputFormat.class, MovieMapper.class);
+		//job.setJarByClass(Multiplication.class);
 		job.setMapperClass(MovieMapper.class);
-		job.setMapperClass(MovieNameMapper.class);
 		job.setReducerClass(MovieReducer.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
-	
+		
+
+	    //MultipleInputs.addInputPath(job, new Path(args[1]),TextInputFormat.class, JoinMapper.class);
+
 		//FileInputFormat.addInputPath(job, new Path(args[0]));
 		//FileInputFormat.addInputPath(job, new Path(args[1]));
-		FileOutputFormat.setOutputPath(job, p3);
+		FileOutputFormat.setOutputPath(job, new Path(args[2]));
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
 
+}
+
+
+public class PopularByName extends Configured implements Tool
+{
+
+    public static class MergeListenersMapper extends Mapper<IntWritable, IntWritable, IntWritable, TrackStats>
+    {
+
+	public void map(IntWritable trackId, IntWritable uniqueListenerCount, Context context)
+	        throws IOException, InterruptedException {
+	    TrackStats trackStats = new TrackStats();
+	    trackStats.setListeners(uniqueListenerCount.get());
+	    context.write(trackId, trackStats);
+	}
+    }
+
+
+    public int run(String[] args) throws Exception {
+
+	Configuration conf = new Configuration();
+
+	Path sumInputDir = new Path(args[1] + Path.SEPARATOR_CHAR + "sumInputDir");
+	Path listenersInputDir = new Path(args[1] + Path.SEPARATOR_CHAR + "listenersInputDir");
+	Path output = new Path(args[1] + Path.SEPARATOR_CHAR + "finalSumOutput");
+
+	@SuppressWarnings("deprecation")
+	Job job = new Job(conf, "merge-results");
+	job.setJarByClass(UniqueListeners.class);
+
+	MultipleInputs.addInputPath(job, sumInputDir, SequenceFileInputFormat.class, Mapper.class);
+	MultipleInputs.addInputPath(job, listenersInputDir, SequenceFileInputFormat.class, MergeListenersMapper.class);
+
+	job.setReducerClass(SumTrackStats.SumTrackStatsReducer.class);
+	job.setOutputKeyClass(IntWritable.class);
+	job.setOutputValueClass(TrackStats.class);
+
+	FileOutputFormat.setOutputPath(job, output);
+	if (job.waitForCompletion(true))
+	    return 0;
+	else
+	    return 1;
+    }
 }

@@ -37,7 +37,7 @@ public class year_popular
 
 	{
 		private final static Text Year = new Text();
-		private final static Text Movie = new Text();
+		private final static Text MovieID = new Text();
 		
 		public void map(Object key, Text val, Context context) throws IOException, InterruptedException
 		{
@@ -48,12 +48,12 @@ public class year_popular
 			while (itr.hasMoreTokens()) {
 				String[] tokens = itr.nextToken().split("::");
 				int time = Integer.parseInt(tokens[3]);
-				String movie = tokens[1];
-				Movie.set(movie);
+				String movieID = tokens[1];
+				MovieID.set(movieID);
 				int year = (time/(365*24*60*60))+1970;
 				String y = Integer.toString(year);
 				Year.set(y);
-				context.write(Year, Movie);
+				context.write(Year, MovieID);
 			}
 			//MID.set(movie);
 
@@ -89,7 +89,7 @@ public class year_popular
 				}
 			}
 			
-			boolean first = true;
+			
 			StringBuilder toReturn = new StringBuilder();
 			
 			// TreeMap stores sorted by key 
@@ -116,27 +116,24 @@ public class year_popular
 			 
 			int count = 0;
 			int max = 10;
+			boolean first = true;
 			for(Map.Entry<Integer, List<String>> doc : Tree.entrySet()) {
 				if (count > max) break;
 			    int key1 = doc.getKey();
-			    
 			    List<String> value = doc.getValue();
-			    
-			    Collections.sort(value);
+			    for (String s: value)
+			    {
+			    	if (!first)
+				    	toReturn.append(", ");
+				    first = false;
+				    toReturn.append(s);   
+				    count++;
+			    }   
 			    //List<String> top10 = new ArrayList<String>(value.subList(value.size() -10, value.size()));
-			    String documents = Arrays.toString(value.toArray()).replace("[", "").replace("]", "");
-			    
-			    if (!first)
-			    	toReturn.append(", ");
-			    first = false;
-			    count++;
+			    //String documents = Arrays.toString(value.toArray()).replace("[", "").replace("]", "");
+			    //count++;
 			    //toReturn.append(value +" "+key1);
-			    toReturn.append(documents);
-			    
-				
 			}
-			
-			
 			context.write(key, new Text(toReturn.toString()));
 	        }
 	}
@@ -150,7 +147,7 @@ public class year_popular
 					.println("Usage: InvertedIndex <input path> <output path>");
 			System.exit(1);
 		}
-		Job job = new Job(conf, "BetterInvertedIndex");
+		Job job = new Job(conf, "Top 10 movies by year");
 		job.setJarByClass(year_popular.class);
 		job.setMapperClass(MovieMapper.class);
 		job.setReducerClass(MovieReducer.class);
