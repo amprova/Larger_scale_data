@@ -31,7 +31,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 public class ActiveAge {
-	public static class MovieMapper extends Mapper<Object, Text, Text, Text>
+	public static class UserMapper extends Mapper<Object, Text, Text, Text>
 
 
 	{
@@ -55,7 +55,7 @@ public class ActiveAge {
 		}
 	}
 	
-	public static class MovieNameMapper extends Mapper<Object, Text, Text, Text>
+	public static class UserAgeMapper extends Mapper<Object, Text, Text, Text>
 
 
 	{
@@ -108,7 +108,7 @@ public class ActiveAge {
 		}
 	}
 
-	public static class MovieSort extends Mapper<LongWritable, Text, Text, Text> { 
+	public static class AgeSort extends Mapper<LongWritable, Text, Text, Text> { 
 		
 		public void map(LongWritable key, Text value, Context context) throws IOException,  InterruptedException 
 		{
@@ -148,15 +148,15 @@ public class ActiveAge {
 	{
 		Configuration conf1 = new Configuration();
 		if (args.length < 3) {
-			System.out.println("Usage: TopKmovies <input path> <input path> <output path>");
+			System.out.println("Usage: Useractivity <input path> <input path> <output path>");
 			System.exit(1);
 		}
 		
-		Job job1 = new Job(conf1, "User activity by gender");
+		Job job1 = new Job(conf1, "User activity by Age");
 		job1.setJarByClass(ActiveAge.class);
 	
-		MultipleInputs.addInputPath(job1, new Path(args[0]),TextInputFormat.class, MovieMapper.class);
-		MultipleInputs.addInputPath(job1, new Path(args[1]),TextInputFormat.class, MovieNameMapper.class);
+		MultipleInputs.addInputPath(job1, new Path(args[0]),TextInputFormat.class, UserMapper.class);
+		MultipleInputs.addInputPath(job1, new Path(args[1]),TextInputFormat.class, UserAgeMapper.class);
 		
 		job1.setReducerClass(MovieReducer.class);
 		job1.setOutputKeyClass(Text.class);
@@ -169,9 +169,9 @@ public class ActiveAge {
 
 		Configuration conf2 = new Configuration();
 		//conf2.set("topn", args[2]);
-		Job job2 = new Job(conf2, "User activity by gender");
+		Job job2 = new Job(conf2, "User activity by Age");
 		job2.setJarByClass(ActiveAge.class);
-		job2.setMapperClass(MovieSort.class);
+		job2.setMapperClass(AgeSort.class);
 		//job2.setNumReduceTasks(1);
 		job2.setReducerClass(SortReducer.class);
 		job2.setOutputKeyClass(Text.class);

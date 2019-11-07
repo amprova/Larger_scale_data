@@ -151,7 +151,7 @@ public class TopKMovieName {
 	        { 	
 				if(count<max)
 				{
-	            String s = entry.getValue();
+	            String s = "Title: "+entry.getValue();
 	            LongWritable freq = entry.getKey(); 
 	            context.write(freq,new Text(s));
 				}

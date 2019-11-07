@@ -137,15 +137,11 @@ public class Evergreen {
 			while(itr.hasNext())
 			{
 				String document = itr.next().toString();
-				//StringTokenizer itr1 = new StringTokenizer(document);
+			
 				String[] val_MID = document.split("::");
 				tmap.put(new LongWritable(Integer.parseInt(val_MID[0])), val_MID[1]);
-				/*while(itr1.hasMoreTokens())
-				{
-				}*/
 				
 			}
-			//String topn = context.getConfiguration().get("topn");
 			int max = context.getConfiguration().getInt("topn", 2);
 			int count = 0;
 			for (Map.Entry<LongWritable, String> entry : tmap.entrySet())
@@ -153,8 +149,8 @@ public class Evergreen {
 				if(count<max)
 				{
 	            String s = entry.getValue();
-	            //LongWritable freq = entry.getKey(); 
-	            context.write(key,new Text(s));
+	            String freq = " #Ratings: "+entry.getKey().toString();
+	            context.write(new Text("Year: "+key.toString()),new Text("Title: "+s+freq));
 				}
 				count++;
 	        } 
@@ -171,7 +167,7 @@ public class Evergreen {
 		}
 		
 		conf1.setInt("topn", Integer.parseInt(args[2]));
-		Job job1 = new Job(conf1, "Top k Movies");
+		Job job1 = new Job(conf1, "Top k Movies by Year");
 		job1.setJarByClass(Evergreen.class);
 		MultipleInputs.addInputPath(job1, new Path(args[0]),TextInputFormat.class, MovieMapper.class);
 		MultipleInputs.addInputPath(job1, new Path(args[1]),TextInputFormat.class, MovieNameMapper.class);
@@ -188,7 +184,7 @@ public class Evergreen {
 
 		Configuration conf2 = new Configuration();
 		conf2.setInt("topn", Integer.parseInt(args[2]));
-		Job job2 = new Job(conf2, "Sorted Top k Movies");
+		Job job2 = new Job(conf2, "Top k Movies by Year");
 		job2.setJarByClass(Evergreen.class);
 		job2.setMapperClass(MovieSort.class);
 		//job2.setNumReduceTasks(1);

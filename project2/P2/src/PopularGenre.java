@@ -55,7 +55,7 @@ public class PopularGenre {
 		}
 	}
 	
-	public static class MovieNameMapper extends Mapper<Object, Text, Text, Text>
+	public static class MovieGenreMapper extends Mapper<Object, Text, Text, Text>
 
 
 	{
@@ -99,7 +99,6 @@ public class PopularGenre {
 				}
 				else
 				{
-					//Genre.set(val);
 					genrelist = val.split("\\|");
 				}
 
@@ -167,7 +166,7 @@ public class PopularGenre {
 	        { 	
 	            String s = entry.getValue();
 	            Integer freq = entry.getKey(); 
-	            context.write(new Text(Integer.toString(freq)),new Text(s));
+	            context.write(new Text("Frequency: " + Integer.toString(freq)),new Text("Genre: "+s));
 				
 	        } 
 	
@@ -179,15 +178,15 @@ public class PopularGenre {
 	{
 		Configuration conf1 = new Configuration();
 		if (args.length < 3) {
-			System.out.println("Usage: TopKmovies <input path> <input path> <output path>");
+			System.out.println("Usage: TopGenres <input path> <input path> <output path>");
 			System.exit(1);
 		}
 		//conf1.set("topn", args[2]);
-		Job job1 = new Job(conf1, "Top k Movies");
+		Job job1 = new Job(conf1, "Top Genre");
 		job1.setJarByClass(PopularGenre.class);
 	
 		MultipleInputs.addInputPath(job1, new Path(args[0]),TextInputFormat.class, MovieMapper.class);
-		MultipleInputs.addInputPath(job1, new Path(args[1]),TextInputFormat.class, MovieNameMapper.class);
+		MultipleInputs.addInputPath(job1, new Path(args[1]),TextInputFormat.class, MovieGenreMapper.class);
 	
 		job1.setReducerClass(MovieReducer.class);
 		job1.setOutputKeyClass(Text.class);
@@ -200,7 +199,7 @@ public class PopularGenre {
 
 		Configuration conf2 = new Configuration();
 		//conf2.set("topn", args[2]);
-		Job job2 = new Job(conf2, "Sorted Top k Movies");
+		Job job2 = new Job(conf2, "Top Genre");
 		job2.setJarByClass(PopularGenre.class);
 		job2.setMapperClass(MovieSort.class);
 		//job2.setNumReduceTasks(1);

@@ -30,13 +30,13 @@ import org.apache.hadoop.util.Tool;
 
 import org.apache.hadoop.util.GenericOptionsParser;
 
-public class PopularByGenre {
+public class MoviePerRating {
 	public static class MovieMapper extends Mapper<Object, Text, Text, Text>
 
 
 	{
 		private final static Text MID = new Text();
-		//private final static LongWritable one = new LongWritable(1);
+		private final static LongWritable one = new LongWritable(1);
 
 
 		public void map(Object key, Text val, Context context)
@@ -44,69 +44,69 @@ public class PopularByGenre {
 		{
 			// input data format => movie_ID    (data is :: separated)
 			String[] tokens = val.toString().split("::"); 
-
 			String movie = tokens[1];
-			StringTokenizer itr = new StringTokenizer(movie);
-			while (itr.hasMoreTokens()) {
-				MID.set(itr.nextToken());
-				context.write(MID, new Text("one"));
+			String rating = tokens[2];
+			//StringTokenizer itr = new StringTokenizer(movie);
+			//itr.hasMoreTokens())
+			if(rating.equals("1"))
+			{
+				MID.set(movie);
+				context.write(MID, new Text(rating));
 			}
-
 		}
 	}
 	
-	public static class MovieNameAndGenreMapper extends Mapper<Object, Text, Text, Text>
+	public static class MovieNameMapper extends Mapper<Object, Text, Text, Text>
 
 
 	{
 		private final static Text MovieID = new Text();
-		private final static Text MovieInfo = new Text();
+		private final static Text MovieName = new Text();
 		
 		public void map(Object key, Text val, Context context) throws IOException, InterruptedException
 		{
 			
 			String rows = val.toString(); 
-			//StringTokenizer itr = new StringTokenizer(rows);
 			String[] tokens = rows.split("::");
-			String movie = tokens[0];
-			MovieID.set(movie);
+			String movieID = tokens[0];
+			MovieID.set(movieID);
 			String title = tokens[1];
-			String genre = tokens[2];
-			String movieinfo = title + "::" +genre;
-			
-			MovieInfo.set(movieinfo);
-			context.write(MovieID, MovieInfo);
+			MovieName.set(title);
+			context.write(MovieID, MovieName);
 
 		}
 	}
 
 	public static class MovieReducer extends Reducer<Text, Text, Text, Text>
 	{
+		
 		private Text result = new Text();
-		private final static Text MovieInfo = new Text();
-
+		private final static Text MovieName = new Text();
 		public void reduce(Text key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException
 		{
-			//String[] tokens = value.toString().split("\t"); 
+			 
 			Iterator<Text> itr = values.iterator();
+			//TreeMap<String,LongWritable> tmap = new TreeMap<String, LongWritable>();
 			int sum = 0;
-			int one = 1;
 			while(itr.hasNext())
 			{
 				String val = itr.next().toString();
-				if(val.contentEquals("one"))
+				if(val.equals("1"))
 				{
-					sum += one;
-				}
-				else
-				{
-					MovieInfo.set(val);
+					sum+=1;
 				}
 				
+				else
+				{
+					MovieName.set(val);
+				}
 			}
-			result.set(Integer.toString(sum));
-			context.write(MovieInfo, result);
+			if(sum>0)
+			{
+				result.set(Integer.toString(sum));
+				context.write(MovieName, result);
+			}
 		}
 	}
 
@@ -116,16 +116,9 @@ public class PopularByGenre {
 		{
 				String[] tokens = value.toString().split("\t"); 
 				String moviename = tokens[0];
-				String count = tokens[1];
-				String[] movieinfo = moviename.split("::");
-				String title = movieinfo[0];
-				String genre = movieinfo[1];
-				String[] genrelist = genre.split("\\|");
-				for(String g: genrelist)
-				{
-					String s = count+"::"+title;
-					context.write(new Text(g), new Text(s));
-				}
+				String rating = tokens[1];
+				String result = moviename + "::" + rating;
+				context.write(new Text("one"), new Text(result));
 		}
 			 	
 	} 
@@ -139,25 +132,26 @@ public class PopularByGenre {
 				throws IOException, InterruptedException
 		{
 			Iterator<Text> itr = values.iterator();
-			TreeMap<LongWritable,String> tmap = new TreeMap< LongWritable, String>(Collections.reverseOrder());
-			
+			TreeMap<Integer,String> tmap = new TreeMap<Integer, String>(Collections.reverseOrder());
 			while(itr.hasNext())
 			{
-				String document = itr.next().toString();
-				String[] val_MID = document.split("::");
-				tmap.put(new LongWritable(Integer.parseInt(val_MID[0])), val_MID[1]);
-				
-				
+				String result = itr.next().toString();
+				String[] val_MID = result.split("::");
+				String mname = val_MID[0];
+				String rating = val_MID[1];
+				int ratings = (Integer.parseInt(rating));
+				tmap.put(ratings, mname);
 			}
-			Map.Entry<LongWritable, String> popular =  tmap.firstEntry();
-			String popFreq = "Frequency: "+popular.getKey().toString();
-			String popName = "Title: "+popular.getValue();
-			context.write(key,new Text("\n"+"Most Popular Movie: "+"\t"+popFreq+"; "+popName));
-			
-			Map.Entry<LongWritable, String> worst =  tmap.lastEntry();
-			String leastFreq = "Frequency: "+worst.getKey().toString();
-			String leastName = "Title: "+worst.getValue();
-			context.write(key,new Text("\n"+"Least Popular Movie: "+"\t"+leastFreq+"; "+leastName));
+			for (Map.Entry<Integer, String> entry : tmap.entrySet())
+	        { 	
+				
+	            String s = entry.getValue();
+	            int key1 = entry.getKey();
+	            String rate = Integer.toString(key1);
+	            context.write(new Text(rate), new Text(s));
+				
+	        }
+
 		}
 	}
 
@@ -166,15 +160,15 @@ public class PopularByGenre {
 	{
 		Configuration conf1 = new Configuration();
 		if (args.length < 3) {
-			System.out.println("Usage: TopKmovies <input path> <input path><output path>");
+			System.out.println("Usage: TopKmovies <input path> <input path> <output path>");
 			System.exit(1);
 		}
 		
 		//conf1.setInt("topn", Integer.parseInt(args[2]));
-		Job job1 = new Job(conf1, "Popular By Genre");
-		job1.setJarByClass(PopularByGenre.class);
+		Job job1 = new Job(conf1, "Popular but worst");
+		job1.setJarByClass(MoviePerRating.class);
 		MultipleInputs.addInputPath(job1, new Path(args[0]),TextInputFormat.class, MovieMapper.class);
-		MultipleInputs.addInputPath(job1, new Path(args[1]),TextInputFormat.class, MovieNameAndGenreMapper.class);
+		MultipleInputs.addInputPath(job1, new Path(args[1]),TextInputFormat.class, MovieNameMapper.class);
 	
 		job1.setReducerClass(MovieReducer.class);
 		job1.setOutputKeyClass(Text.class);
@@ -188,8 +182,8 @@ public class PopularByGenre {
 
 		Configuration conf2 = new Configuration();
 		//conf2.setInt("topn", Integer.parseInt(args[2]));
-		Job job2 = new Job(conf2, "Popular By Genre");
-		job2.setJarByClass(PopularByGenre.class);
+		Job job2 = new Job(conf2, "Popular but worst");
+		job2.setJarByClass(MoviePerRating.class);
 		job2.setMapperClass(MovieSort.class);
 		//job2.setNumReduceTasks(1);
 		job2.setReducerClass(SortReducer.class);
