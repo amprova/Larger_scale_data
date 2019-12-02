@@ -166,7 +166,7 @@ public class PopularByGenre {
 	{
 		Configuration conf1 = new Configuration();
 		if (args.length < 3) {
-			System.out.println("Usage: TopKmovies <input path> <input path><output path>");
+			System.out.println("Usage: PopularByGenre <input path> <input path><output path>");
 			System.exit(1);
 		}
 		
